@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bulk Check Results</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="/static/js/script.js" defer></script>
+</head>
+<body>
+    <h1>Bulk Check Results</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Hostname</th>
+                <th>Port</th>
+                <th>Reachable</th>
+                <th>TLS Version</th>
+                <th>Certificate Expiry</th>
+                <th>Certificate Issuer</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in results %}
+            <tr>
+                <td>{{ result.hostname }}</td>
+                <td>{{ result.port }}</td>
+                <td>{{ 'Yes' if result.reachable else 'No' }}</td>
+                <td>{{ result.tls_version or 'N/A' }}</td>
+                <td>{{ result.certificate.valid_to or 'N/A' }}</td>
+                <td>{{ result.certificate.issuer or 'N/A' }}</td>
+                <td>
+                    {% if result.certificate.valid_to and (result.status == 'expiring' or result.status == 'expired') %}
+                    <span style="color: red;">{{ result.status }}</span>
+                    {% else %}
+                    <span style="color: green;">Valid</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Send Alerts</h2>
+    <form id="alert-form">
+        <label for="recipients">Recipients (comma-separated):</label>
+        <input type="text" id="recipients" placeholder="e.g., email1@example.com,email2@example.com">
+        <label for="alert-message">Message:</label>
+        <textarea id="alert-message" placeholder="Enter your alert message"></textarea>
+        <button type="submit">Send Alert</button>
+    </form>
+</body>
+</html>

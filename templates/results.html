@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Check Results</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <h1>Check Results</h1>
+    <p>Hostname: {{ result.hostname }}</p>
+    <p>Port: {{ result.port }}</p>
+    <p>Reachable: {{ result.reachable }}</p>
+    <p>TLS Version: {{ result.tls_version }}</p>
+    <h2>Certificate Details</h2>
+    <ul>
+        <li>Issuer: {{ result.certificate.issuer }}</li>
+        <li>Valid From: {{ result.certificate.valid_from }}</li>
+        <li>Valid To: {{ result.certificate.valid_to }}</li>
+    </ul>
+</body>
+</html>

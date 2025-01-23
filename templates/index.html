@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Certificate Checker</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <h1>Certificate Checker</h1>
+    <form action="/check" method="POST">
+        <label for="hostname">Hostname:</label>
+        <input type="text" name="hostname" id="hostname" required>
+        <label for="port">Port:</label>
+        <input type="number" name="port" id="port" required>
+        <button type="submit">Check</button>
+    </form>
+    <hr>
+    <h2>Bulk Check</h2>
+    <form action="/bulk" method="POST" enctype="multipart/form-data">
+        <label for="csv_file">Upload CSV:</label>
+        <input type="file" name="csv_file" id="csv_file" required>
+        <button type="submit">Check</button>
+    </form>
+</body>
+</html>
