@@ -16,6 +16,7 @@
                 <th>Reachable</th>
                 <th>TLS Version</th>
                 <th>Certificate Expiry</th>
+                <th>Days Left</th> <!-- New Column -->
                 <th>Certificate Issuer</th>
                 <th>Status</th>
             </tr>
@@ -28,12 +29,17 @@
                 <td>{{ 'Yes' if result.reachable else 'No' }}</td>
                 <td>{{ result.tls_version or 'N/A' }}</td>
                 <td>{{ result.certificate.valid_to or 'N/A' }}</td>
+                <td>{{ result.days_left if result.days_left is not none else 'N/A' }}</td> <!-- Display days left -->
                 <td>{{ result.certificate.issuer or 'N/A' }}</td>
                 <td>
-                    {% if result.certificate.valid_to and (result.status == 'expiring' or result.status == 'expired') %}
-                    <span style="color: red;">{{ result.status }}</span>
+                    {% if result.status == 'Host Unreachable' %}
+                        <span style="color: red;">Host Unreachable</span>
+                    {% elif result.status == 'No Certificate' %}
+                        <span style="color: orange;">No Certificate</span>
+                    {% elif result.status == 'expiring' or result.status == 'expired' %}
+                        <span style="color: red;">{{ result.status }}</span>
                     {% else %}
-                    <span style="color: green;">Valid</span>
+                        <span style="color: green;">Valid</span>
                     {% endif %}
                 </td>
             </tr>

@@ -3,6 +3,7 @@ import socket
 import ssl
 import csv
 from datetime import datetime
+import warnings
 
 # Ensure the upload directory exists
 UPLOAD_FOLDER = 'uploads'
@@ -19,20 +20,43 @@ def check_network_connection(hostname, port):
 
 
 # Function to get TLS version and certificate details
-def get_tls_and_certificate_details(hostname, port):
+def get_tls_and_certificate_details(hostname, port=443):
     try:
+
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+        versions = {
+            'TLSv1': ssl.TLSVersion.TLSv1,
+            'TLSv1.1': ssl.TLSVersion.TLSv1_1,
+            'TLSv1.2': ssl.TLSVersion.TLSv1_2,
+            'TLSv1.3': ssl.TLSVersion.TLSv1_3
+        }
+        
+        supported_versions = []
+        
+        for version_name, version in versions.items():
+            try:
+                context = ssl.create_default_context()
+                context.minimum_version = version  
+                context.maximum_version = version
+
+                with socket.create_connection((hostname, port)) as conn:
+                    with context.wrap_socket(conn, server_hostname=hostname) as sock:
+                        sock.getpeercert()  
+                
+                supported_versions.append(version_name)
+            except ssl.SSLError:
+                pass
+
         context = ssl.create_default_context()
         with socket.create_connection((hostname, port)) as sock:
             with context.wrap_socket(sock, server_hostname=hostname) as ssock:
-                tls_version = ssock.version()
                 cert = ssock.getpeercert()
 
-                # Extract and format issuer details
                 raw_issuer = cert.get('issuer', [])
                 issuer_details = "\n".join(
                     f"- {name}: {value}" for item in raw_issuer for name, value in item
                 )
-                # print(issuer_details)
 
                 cert_details = {
                     'valid_from': cert.get('notBefore'),
@@ -40,61 +64,126 @@ def get_tls_and_certificate_details(hostname, port):
                     'issuer': issuer_details,
                     'subject': cert.get('subject', []),
                 }
-                return tls_version, cert_details
+
+        return supported_versions, cert_details
+
     except Exception as e:
         return None, None
-
 
 
 # Function to determine the status of a certificate based on its validity date
 def determine_cert_status(cert_valid_to):
     if not cert_valid_to:
-        return "Invalid"
+        return "Invalid", None
     try:
+        # Convert the string 'valid_to' into a datetime object
         expiry_date = datetime.strptime(cert_valid_to, '%b %d %H:%M:%S %Y %Z')
+        
+        # Calculate the number of days left until expiration
         days_left = (expiry_date - datetime.now()).days
         if days_left < 0:
-            return "Expired"
+            return "Expired", days_left
         elif days_left <= 30:
-            return "Expiring Soon"
-        return "Valid"
+            return f"Expiring Soon ({days_left} days left)", days_left
+        return f"Valid ({days_left} days left)", days_left
     except Exception as e:
         print(f"Error determining certificate status: {e}")
-        return "Invalid"
+        return "Invalid", None
+
 
 
 # Function to check a single host and return its details
 def check_host(hostname, port=443):
-    reachable = check_network_connection(hostname, port)
-    tls_version, cert_details = get_tls_and_certificate_details(hostname, port)
-
+    # Initialize the result dictionary with default values
     result = {
         'hostname': hostname,
         'port': port,
-        'reachable': reachable,
-        'tls_version': tls_version,
-        'certificate': cert_details or {},
-        'status': None,
+        'reachable': False,
+        'tls_version': None,
+        'certificate': {},
+        'status': "No Certificate",  # Default status for unreachable or no certificate
+        'days_left': None
     }
 
-    if cert_details:
-        result['status'] = determine_cert_status(cert_details.get('valid_to'))
-    else:
-        result['status'] = "No Certificate"
+    try:
+        # Check network connectivity
+        reachable = check_network_connection(hostname, port)
+        result['reachable'] = reachable
 
+        if not reachable:
+            print(f"Host {hostname} on port {port} is not reachable.")
+            result['status'] = "Host Unreachable"
+            return result
+
+        # Get TLS and certificate details
+        tls_version, cert_details = get_tls_and_certificate_details(hostname, port)
+
+        # Log the fetched details for debugging purposes
+        print(f"TLS Version: {tls_version}, Cert Details: {cert_details}")
+
+        result['tls_version'] = tls_version
+        result['certificate'] = cert_details or {}
+
+        # If no certificate details are found, set status to "No Certificate"
+        if not cert_details:
+            print(f"No certificate details for {hostname}.")
+            result['status'] = "No Certificate"
+        else:
+            # Determine certificate validity and days left
+            if cert_details.get('valid_to'):
+                status, days_left = determine_cert_status(cert_details.get('valid_to'))
+                result['status'] = status
+                result['days_left'] = days_left
+            else:
+                print(f"Certificate 'valid_to' missing for {hostname}.")
+                result['status'] = "No Certificate"
+                result['days_left'] = None
+
+    except Exception as e:
+        print(f"Error checking host {hostname} on port {port}: {e}")
+        result['status'] = "Error"
+        result['days_left'] = None
     return result
 
 
-# Function to process multiple hosts from a CSV file
 def process_bulk_hosts(file_path):
     results = []
     try:
         with open(file_path, mode='r') as csv_file:
             csv_reader = csv.DictReader(csv_file)
             for row in csv_reader:
+                # Check if row is None or empty
+                if row is None or not row:
+                    print("Found empty or None row, skipping...")
+                    continue
+                
+                # Log the row contents to debug NoneType issues
+                print(f"Processing row: {row}")
+                
+                if 'hostname' not in row or 'port' not in row:
+                    print(f"Skipping row with missing required fields: {row}")
+                    continue  # Skip any rows with missing 'hostname' or 'port'
+                
                 hostname = row.get('hostname')
-                port = int(row.get('port', 443))  # Default to port 443 if not specified
+                if not hostname:
+                    print(f"Skipping row with missing 'hostname': {row}")
+                    continue
+                
+                # Handle potential issues with non-integer ports
+                try:
+                    port = int(row.get('port', 443))  # Default to port 443 if not specified
+                except ValueError:
+                    print(f"Error: Invalid port value '{row.get('port')}', defaulting to 443 for hostname {hostname}")
+                    port = 443  # Default to 443 in case of invalid port
+                
+                print(f"Processing hostname: {hostname} on port: {port}")
+                
+                # Check if the result of check_host() is None before appending
                 result = check_host(hostname, port)
+                if result is None:
+                    print(f"Warning: check_host returned None for {hostname} on port {port}")
+                    continue  # Skip this result if it's None
+                
                 results.append(result)
     except FileNotFoundError:
         print(f"Error: File not found at path {file_path}")
