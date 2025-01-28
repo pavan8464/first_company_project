@@ -18,11 +18,16 @@ def check_network_connection(hostname, port):
     except Exception:
         return False
 
+def is_self_signed(cert):
+    # Check if the issuer and subject are the same
+    issuer = dict(x[0] for x in cert.get('issuer', ()))
+    subject = dict(x[0] for x in cert.get('subject', ()))
+    return issuer == subject
+
 
 # Function to get TLS version and certificate details
 def get_tls_and_certificate_details(hostname, port=443):
     try:
-
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         versions = {
@@ -37,14 +42,14 @@ def get_tls_and_certificate_details(hostname, port=443):
         for version_name, version in versions.items():
             try:
                 context = ssl.create_default_context()
-                context.minimum_version = version  
+                context.minimum_version = version
                 context.maximum_version = version
 
                 with socket.create_connection((hostname, port)) as conn:
                     with context.wrap_socket(conn, server_hostname=hostname) as sock:
-                        sock.getpeercert()  
-                
-                supported_versions.append(version_name)
+                        cert = sock.getpeercert()
+                        if not is_self_signed(cert):
+                            supported_versions.append(version_name)
             except ssl.SSLError:
                 pass
 
@@ -65,10 +70,34 @@ def get_tls_and_certificate_details(hostname, port=443):
                     'subject': cert.get('subject', []),
                 }
 
+        if not is_self_signed(cert):
+            return supported_versions, cert_details
+
+        # Handling self-signed certificates
+        context.check_hostname = False  # Allow self-signed certificates
+        context.verify_mode = ssl.CERT_NONE  # Allow self-signed certificates
+
+        with socket.create_connection((hostname, port)) as sock:
+            with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                cert = ssock.getpeercert()
+
+                raw_issuer = cert.get('issuer', [])
+                issuer_details = "\n".join(
+                    f"- {name}: {value}" for item in raw_issuer for name, value in item
+                )
+
+                cert_details = {
+                    'valid_from': cert.get('notBefore'),
+                    'valid_to': cert.get('notAfter'),
+                    'issuer': issuer_details,
+                    'subject': cert.get('subject', []),
+                }
+
         return supported_versions, cert_details
 
     except Exception as e:
         return None, None
+
 
 
 # Function to determine the status of a certificate based on its validity date
@@ -152,37 +181,34 @@ def process_bulk_hosts(file_path):
         with open(file_path, mode='r') as csv_file:
             csv_reader = csv.DictReader(csv_file)
             for row in csv_reader:
-                # Check if row is None or empty
                 if row is None or not row:
                     print("Found empty or None row, skipping...")
                     continue
                 
-                # Log the row contents to debug NoneType issues
                 print(f"Processing row: {row}")
                 
-                if 'hostname' not in row or 'port' not in row:
+                if 'hostname' not in row or 'port' not in row or 'recipients' not in row:
                     print(f"Skipping row with missing required fields: {row}")
-                    continue  # Skip any rows with missing 'hostname' or 'port'
+                    continue
                 
                 hostname = row.get('hostname')
                 if not hostname:
                     print(f"Skipping row with missing 'hostname': {row}")
                     continue
                 
-                # Handle potential issues with non-integer ports
                 try:
                     port = int(row.get('port', 443))  # Default to port 443 if not specified
                 except ValueError:
                     print(f"Error: Invalid port value '{row.get('port')}', defaulting to 443 for hostname {hostname}")
                     port = 443  # Default to 443 in case of invalid port
                 
-                # print(f"Processing hostname: {hostname} on port: {port}")
-                
-                # Check if the result of check_host() is None before appending
                 result = check_host(hostname, port)
                 if result is None:
                     print(f"Warning: check_host returned None for {hostname} on port {port}")
-                    continue  # Skip this result if it's None
+                    continue
+
+                # Add recipients to the result
+                result['recipients'] = row.get('recipients')
                 
                 results.append(result)
     except FileNotFoundError:
@@ -190,6 +216,7 @@ def process_bulk_hosts(file_path):
     except Exception as e:
         print(f"Error processing bulk hosts: {e}")
     return results
+
 
 
 # Function to check multiple hosts (wrapper for process_bulk_hosts)

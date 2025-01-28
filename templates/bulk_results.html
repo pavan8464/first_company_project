@@ -48,10 +48,10 @@
                     <form action="{{ url_for('send_alert_page') }}" method="GET" style="display: inline;">
                         <input type="hidden" name="hostname" value="{{ result.hostname }}">
                         <input type="hidden" name="port" value="{{ result.port }}">
-                        <input type="hidden" name="recipients" value="email1@example.com,email2@example.com"> <!-- Include recipients here -->
+                        <input type="hidden" name="recipients" value="{{ result.recipients }}"> <!-- Include the correct recipients -->
                         <button type="submit">Send Alert</button>
                     </form>
-                </td>                
+                </td>                                
             </tr>
             {% endfor %}
         </tbody>
