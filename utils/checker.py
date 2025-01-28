@@ -119,7 +119,7 @@ def check_host(hostname, port=443):
         tls_version, cert_details = get_tls_and_certificate_details(hostname, port)
 
         # Log the fetched details for debugging purposes
-        print(f"TLS Version: {tls_version}, Cert Details: {cert_details}")
+        # print(f"TLS Version: {tls_version}, Cert Details: {cert_details}")
 
         result['tls_version'] = tls_version
         result['certificate'] = cert_details or {}
@@ -176,7 +176,7 @@ def process_bulk_hosts(file_path):
                     print(f"Error: Invalid port value '{row.get('port')}', defaulting to 443 for hostname {hostname}")
                     port = 443  # Default to 443 in case of invalid port
                 
-                print(f"Processing hostname: {hostname} on port: {port}")
+                # print(f"Processing hostname: {hostname} on port: {port}")
                 
                 # Check if the result of check_host() is None before appending
                 result = check_host(hostname, port)

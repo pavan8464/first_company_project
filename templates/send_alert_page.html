@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send Alert</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        textarea {
+            width: 100%;
+            resize: none;
+        }
+        .button {
+            margin-top: 15px;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Send Alert for {{ hostname }}</h1>
+    <form action="{{ url_for('send_alert_route') }}" method="POST">
+        <input type="hidden" name="hostname" value="{{ hostname }}">
+
+        <div>
+            <label for="recipients">Recipients:</label>
+            <ul>
+                {% for email in recipients %}
+                    <li>{{ email }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div>
+            <label for="message">Message:</label>
+            <textarea name="message" rows="4" cols="50"></textarea>
+        </div>
+
+        <button type="submit" class="button">Send Alert</button>
+    </form>
+</body>
+</html>

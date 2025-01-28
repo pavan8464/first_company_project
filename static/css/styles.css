@@ -3,9 +3,37 @@ body {
     margin: 20px;
     padding: 20px;
 }
+
 h1, h2 {
     color: #333;
 }
+
 form {
     margin-bottom: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    padding: 8px;
+    border: 1px solid #bd3434;
+}
+
+/* Center-align these specific columns */
+th:nth-child(2), td:nth-child(2),  /* Port */
+th:nth-child(3), td:nth-child(3),  /* Reachable */
+th:nth-child(4), td:nth-child(4),  /* TLS Version */
+th:nth-child(5), td:nth-child(5),  /* Certificate Expiry */
+th:nth-child(6), td:nth-child(6),  /* Days Left */
+th:nth-child(8), td:nth-child(8) { /* Status */
+    text-align: center;
+}
+
+/* Optional: Style for color-coded status messages */
+span {
+    font-weight: bold;
 }

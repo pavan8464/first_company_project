@@ -16,9 +16,10 @@
                 <th>Reachable</th>
                 <th>TLS Version</th>
                 <th>Certificate Expiry</th>
-                <th>Days Left</th> <!-- New Column -->
+                <th>Days Left</th>
                 <th>Certificate Issuer</th>
                 <th>Status</th>
+                <th>Action</th> <!-- New column for the Send Alert button -->
             </tr>
         </thead>
         <tbody>
@@ -29,31 +30,31 @@
                 <td>{{ 'Yes' if result.reachable else 'No' }}</td>
                 <td>{{ result.tls_version or 'N/A' }}</td>
                 <td>{{ result.certificate.valid_to or 'N/A' }}</td>
-                <td>{{ result.days_left if result.days_left is not none else 'N/A' }}</td> <!-- Display days left -->
+                <td>{{ result.days_left if result.days_left is not none else 'N/A' }}</td>
                 <td>{{ result.certificate.issuer or 'N/A' }}</td>
                 <td>
                     {% if result.status == 'Host Unreachable' %}
                         <span style="color: red;">Host Unreachable</span>
                     {% elif result.status == 'No Certificate' %}
                         <span style="color: orange;">No Certificate</span>
-                    {% elif result.status == 'expiring' or result.status == 'expired' %}
+                    {% elif result.status in ['expiring', 'expired'] %}
                         <span style="color: red;">{{ result.status }}</span>
                     {% else %}
                         <span style="color: green;">Valid</span>
                     {% endif %}
                 </td>
+                <td>
+                    <!-- Button to send an alert for this host -->
+                    <form action="{{ url_for('send_alert_page') }}" method="GET" style="display: inline;">
+                        <input type="hidden" name="hostname" value="{{ result.hostname }}">
+                        <input type="hidden" name="port" value="{{ result.port }}">
+                        <input type="hidden" name="recipients" value="email1@example.com,email2@example.com"> <!-- Include recipients here -->
+                        <button type="submit">Send Alert</button>
+                    </form>
+                </td>                
             </tr>
             {% endfor %}
         </tbody>
     </table>
-
-    <h2>Send Alerts</h2>
-    <form id="alert-form">
-        <label for="recipients">Recipients (comma-separated):</label>
-        <input type="text" id="recipients" placeholder="e.g., email1@example.com,email2@example.com">
-        <label for="alert-message">Message:</label>
-        <textarea id="alert-message" placeholder="Enter your alert message"></textarea>
-        <button type="submit">Send Alert</button>
-    </form>
 </body>
 </html>
