@@ -69,6 +69,7 @@
                 <th>Certificate Expiry</th>
                 <th>Days Left</th>
                 <th>Certificate Issuer</th>
+                <th>Common Name</th>
                 <th>Certificate Type</th>
                 <th>Status</th>
                 <th>Action</th> <!-- Added for Send Alert Button -->
@@ -84,6 +85,7 @@
                 <td>{{ result.certificate.valid_to if result.certificate else 'N/A' }}</td>
                 <td>{{ result.days_left if result.days_left is not none else 'N/A' }}</td>
                 <td>{{ result.certificate.issuer if result.certificate else 'N/A' }}</td>
+                <td>{{ result.certificate.common_name if result.certificate else 'N/A' }}</td>
                 <td>{{ result.certificate.type if result.certificate else 'N/A' }}</td>
                 <td>
                     {% if result.status == 'Invalid Port' %}
