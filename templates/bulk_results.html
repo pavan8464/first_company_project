@@ -86,7 +86,7 @@
                 <td>{{ result.days_left if result.days_left is not none else 'N/A' }}</td>
                 <td>{{ result.certificate.issuer if result.certificate else 'N/A' }}</td>
                 <td>{{ result.certificate.common_name if result.certificate else 'N/A' }}</td>
-                <td>{{ result.certificate.type if result.certificate else 'N/A' }}</td>
+                <td>{{ result.certificate_type if result.certificate_type else 'N/A' }}</td>
                 <td>
                     {% if result.status == 'Invalid Port' %}
                         <span class="status-warning">Invalid Port</span>

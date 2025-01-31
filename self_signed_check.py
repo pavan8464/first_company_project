@@ -238,7 +238,7 @@ if __name__ == "__main__":
     print(check_host(hostname, port))
 
     # Example: Bulk host check from CSV
-    file_path = "hosts.csv"  # Your CSV file path
-    results = check_bulk_hosts(file_path)
-    for result in results:
-        print(result)
+    # file_path = "hosts.csv"  # Your CSV file path
+    # results = check_bulk_hosts(file_path)
+    # for result in results:
+    #     print(result)

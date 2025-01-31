@@ -4,14 +4,157 @@
     <meta charset="UTF-8">
     <title>Certificate Checker</title>
     <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        form {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"], input[type="file"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .port-fields {
+            display: flex;
+            gap: 10px;
+        }
+        .port-fields div {
+            flex: 1;
+        }
+    </style>
+    <script>
+        function togglePortFields() {
+            var checkbox = document.getElementById("unknown_port");
+            var singlePortField = document.getElementById("port_field");
+            var rangePortFields = document.getElementById("port_range_fields");
+    
+            if (checkbox.checked) {
+                singlePortField.style.display = "none";
+                rangePortFields.style.display = "flex";
+            } else {
+                singlePortField.style.display = "block";
+                rangePortFields.style.display = "none";
+            }
+        }
+    
+        async function submitForm(event) {
+            event.preventDefault();
+            console.log("Form submitted");
+    
+            const hostname = document.getElementById("hostname").value;
+            const unknownPort = document.getElementById("unknown_port").checked;
+            let startPort = null;
+            let endPort = null;
+    
+            if (unknownPort) {
+                startPort = parseInt(document.getElementById("start_port").value);
+                endPort = parseInt(document.getElementById("end_port").value);
+            } else {
+                startPort = endPort = parseInt(document.getElementById("port").value);
+            }
+    
+            if (isNaN(startPort) || isNaN(endPort) || startPort < 0 || endPort < 0 || startPort > endPort) {
+                alert("Please provide valid port values.");
+                return false;
+            }
+    
+            try {
+                console.log("Sending request to /scan");
+                const response = await fetch(`/scan?hostname=${hostname}&startPort=${startPort}&endPort=${endPort}`);
+                const results = await response.json();
+                console.log("Response received:", results);
+    
+                showExecutionTime(results.estimated_total_time, results.progress);
+                displayResults(results.open_ports);
+            } catch (error) {
+                console.error("Error scanning ports:", error);
+            }
+    
+            return false;
+        }
+    
+        function showExecutionTime(estimatedTotalTime, progress) {
+            alert(`Estimated total time: ${estimatedTotalTime.toFixed(2)} seconds\n` +
+                  progress.map(p => `Scanning port ${p.port} | Estimated time remaining: ${p.estimated_time_remaining.toFixed(2)} seconds`).join('\n'));
+        }
+    
+        function displayResults(openPorts) {
+            const resultsContainer = document.createElement("div");
+            resultsContainer.innerHTML = `<h2>Open ports for given host: ${openPorts.join(", ")}</h2>`;
+            document.body.appendChild(resultsContainer);
+        }
+    </script>            
 </head>
 <body>
     <h1>Certificate Checker</h1>
-    <form action="/check" method="POST">
+    <form action="/check" method="POST" onsubmit="return submitForm(event)">
         <label for="hostname">Hostname:</label>
         <input type="text" name="hostname" id="hostname" required>
-        <label for="port">Port:</label>
-        <input type="number" name="port" id="port" required>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="unknown_port" name="unknown_port" onclick="togglePortFields()">
+            <label for="unknown_port">I don't know the port</label>
+        </div>
+        
+        <div id="port_field">
+            <label for="port">Port:</label>
+            <input type="number" name="port" id="port" required>
+        </div>
+
+        <div id="port_range_fields" style="display:none;">
+            <div class="port-fields">
+                <div>
+                    <label for="start_port">Start Port:</label>
+                    <input type="number" name="start_port" id="start_port">
+                </div>
+                <div>
+                    <label for="end_port">End Port:</label>
+                    <input type="number" name="end_port" id="end_port">
+                </div>
+            </div>
+        </div>
+
         <button type="submit">Check</button>
     </form>
     <hr>

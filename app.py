@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, send_file, session
 from utils.checker import check_host, check_bulk_hosts
 from utils.emailer import send_alert
+from utils.port_scanner import scan_ports
 import os
 import csv
 from io import StringIO, BytesIO
@@ -19,19 +20,78 @@ def home():
     return render_template('index.html')
 
 # Single host check route
+# @app.route('/check', methods=['POST'])
+# def check():
+#     try:
+#         hostname = request.form.get('hostname')
+#         port = int(request.form.get('port', 0))
+#         if not hostname or not port:
+#             flash('Hostname and Port are required.', 'error')
+#             return redirect(url_for('home'))
+
+#         result = check_host(hostname, port)
+#         return render_template('results.html', result=result)
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
+# @app.route('/check', methods=['POST'])
+# def check():
+#     try:
+#         hostname = request.form.get('hostname')
+#         port = request.form.get('port')
+#         unknown_port = 'unknown_port' in request.form
+#         if not hostname:
+#             flash('Hostname is required.', 'error')
+#             return redirect(url_for('home'))
+
+#         if unknown_port:
+#             start_port = int(request.form.get('start_port'))
+#             end_port = int(request.form.get('end_port'))
+#             if start_port > end_port:
+#                 flash('Start port cannot be greater than end port.', 'error')
+#                 return redirect(url_for('home'))
+#             results = scan_ports(hostname, start_port, end_port)
+#             return render_template('results.html', result=results, open_ports=results['open_ports'])
+#         else:
+#             port = int(port)
+#             result = check_host(hostname, port)
+#             return render_template('results.html', result=result, open_ports=result.get('open_ports', []))
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
 @app.route('/check', methods=['POST'])
 def check():
     try:
         hostname = request.form.get('hostname')
-        port = int(request.form.get('port', 0))
-        if not hostname or not port:
-            flash('Hostname and Port are required.', 'error')
+        port = request.form.get('port')
+        unknown_port = 'unknown_port' in request.form
+        if not hostname:
+            flash('Hostname is required.', 'error')
             return redirect(url_for('home'))
 
-        result = check_host(hostname, port)
-        return render_template('results.html', result=result)
+        if unknown_port:
+            start_port = int(request.form.get('start_port'))
+            end_port = int(request.form.get('end_port'))
+            if start_port > end_port:
+                flash('Start port cannot be greater than end port.', 'error')
+                return redirect(url_for('home'))
+            results = scan_ports(hostname, start_port, end_port)
+            return render_template('results.html', result=results, open_ports=results['open_ports'])
+        else:
+            port = int(port)
+            result = check_host(hostname, port)
+            return render_template('results.html', result=result, open_ports=result.get('open_ports', []))
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/scan', methods=['GET'])
+def scan():
+    hostname = request.args.get('hostname')
+    start_port = int(request.args.get('startPort'))
+    end_port = int(request.args.get('endPort'))
+
+    results = scan_ports(hostname, start_port, end_port)
+    return jsonify(results)
+
 
 # Bulk check route
 # @app.route('/bulk', methods=['POST'])
@@ -76,6 +136,15 @@ def bulk_check():
 def bulk_results():
     results = session.get('results', [])
     return render_template('bulk_results.html', results=results)
+
+@app.route('/check_certificate', methods=['GET'])
+def check_cert():
+    hostname = request.args.get('hostname')
+    if not hostname:
+        return jsonify({"error": "Please provide a hostname"}), 400
+    
+    result = check_certificate(hostname)
+    return jsonify(result)
 
 
 # Send alert route
@@ -152,7 +221,8 @@ def export_csv():
             ', '.join(result['tls_version']) if result['tls_version'] else 'N/A',
             result['certificate'].get('valid_to', 'N/A'), result['days_left'],
             result['certificate'].get('issuer', 'N/A'),
-            result['certificate'].get('type', 'N/A'),
+            # result['certificate'].get('type', 'N/A'),
+            result['certificate_type'],
             result['status']
         ])
     
@@ -186,7 +256,8 @@ def export_pdf():
             result['certificate'].get('valid_to', 'N/A'),
             str(result['days_left']) if result['days_left'] is not None else 'N/A',
             result['certificate'].get('issuer', 'N/A'),
-            result['certificate'].get('type', 'N/A'),
+            # result['certificate'].get('type', 'N/A'),
+            result['certificate_type'],
             result['status']
         ]
         data.append(row)
